@@ -1,0 +1,58 @@
+Short guide for formatting, checking, and publishing the coordinate transformation tool
+
+1. Interface Cleanup
+   - Remove unnecessary elements and buttons from HTML and JS.
+   - Ensure there are no references to deleted elements.
+
+2. Visual Design
+   - Use flexbox or grid for layout alignment.
+   - Check responsiveness for mobile devices.
+   - Ensure harmony and readability of all UI elements.
+
+3. Documentation
+   - Create README.md in English with description, usage, requirements, and run instructions.
+   - Check grammar and structure of all text files.
+   - Update documentation whenever the project changes.
+
+4. Code Review
+   - Remove non-existent CSS properties.
+   - Ensure there are no duplicate or erroneous lines.
+   - Keep code clean and readable.
+   - All comments in code must be in English.
+   - Use only manual formulas for coordinate transformations (no external libraries).
+   - Test all coordinate conversions for accuracy.
+
+5. Git and Publishing
+   - Use .gitignore to exclude service/local files (e.g., rules.txt).
+   - Publish only necessary files (HTML, Function.txt, README.md).
+   - Use standard git commands for initialization and publishing.
+
+6. Recommendations
+   - Repeat these steps for new projects.
+   - Keep this file only locally, do not add to the repository.
+   - Update the rules as needed for workflow convenience.
+
+Last updated: 2025-04-17
+
+---
+
+GitHub Publishing Instructions:
+
+1. Open terminal in the project folder.
+2. Run the following commands in order:
+   git init
+   git add README.md coordinate-transformer.html Function.txt .gitignore
+   git commit -m "first commit"
+   git branch -M main
+   git remote add origin 
+   git push -u origin main
+3. Make sure this rules file is not in the repository (it is in .gitignore).
+4. After publishing, check the project on GitHub.
+
+rm -rf .git
+git init
+git add .
+git commit -m "Initial commit"
+git branch -M main
+git remote add origin https://github.com/Vitalii-Khomenko/Coordinate-transformer-3.4.git
+git push -u --force origin main
