@@ -397,6 +397,7 @@
             <div class="map-container">
                 <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
                     <button onclick="saveMapToPdf()" class="save-pdf">Save Map as PDF</button>
+                    <button onclick="exportKML()" class="save-txt">Export as KML</button>
                     <label for="pdfQuality" style="font-weight:normal;">JPEG quality:</label>
                     <input type="range" id="pdfQuality" min="0.2" max="1" step="0.05" value="0.7" style="width:120px;">
                     <span id="pdfQualityValue">0.7</span>
@@ -791,6 +792,8 @@
             }
         }
 
+        let lastImportedTxtFileName = null;
+
         function handleFileImport(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -804,6 +807,7 @@
                 event.target.value = '';
                 return;
             }
+            lastImportedTxtFileName = file.name;
             const reader = new FileReader();
             reader.onload = function(e) {
                 document.getElementById('coordinates').value = e.target.result;
@@ -838,6 +842,50 @@
                 doc.addImage(imgData, 'JPEG', x, y, renderWidth, renderHeight);
                 doc.save('map.pdf');
             });
+        }
+
+        function exportKML() {
+            const rows = document.querySelectorAll('#resultsBody tr');
+            if (!rows.length) {
+                alert('No points to export.');
+                return;
+            }
+            let kml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+            kml += `<kml xmlns="http://www.opengis.net/kml/2.2">\n<Document>\n`;
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells.length < 6) return;
+                const pointID = cells[0].textContent.trim();
+                const lat = parseFloat(cells[4].textContent);
+                const lng = parseFloat(cells[5].textContent);
+                if (!isFinite(lat) || !isFinite(lng)) return;
+                kml += `<Placemark>\n`;
+                kml += `<name>${pointID}</name>\n`;
+                kml += `<Point><coordinates>${lng},${lat},0</coordinates></Point>\n`;
+                kml += `</Placemark>\n`;
+            });
+            kml += `</Document>\n</kml>`;
+            let fileName = 'points.kml';
+            if (lastImportedTxtFileName && lastImportedTxtFileName.toLowerCase().endsWith('.txt')) {
+                fileName = lastImportedTxtFileName.replace(/\.txt$/i, '.kml');
+            } else {
+                const now = new Date();
+                const dd = String(now.getDate()).padStart(2, '0');
+                const mm = String(now.getMonth() + 1).padStart(2, '0');
+                const yyyy = now.getFullYear();
+                fileName = `${dd}${mm}${yyyy}.kml`;
+            }
+            const blob = new Blob([kml], { type: 'application/vnd.google-earth.kml+xml' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 100);
         }
 
         (function() {
