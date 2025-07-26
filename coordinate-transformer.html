@@ -1559,7 +1559,7 @@
                 const lat = parseFloat(cells[4].textContent);
                 const lng = parseFloat(cells[5].textContent);
                 if (!isFinite(lat) || !isFinite(lng)) return;
-                allPoints.push({ pointID: pointID + '_GK', lat, lng });
+                allPoints.push({ pointID: pointID, lat, lng });
             });
             
             // SWEREF99 to WGS84 results
@@ -1571,7 +1571,7 @@
                 const lat = parseFloat(cells[4].textContent);
                 const lng = parseFloat(cells[5].textContent);
                 if (!isFinite(lat) || !isFinite(lng)) return;
-                allPoints.push({ pointID: pointID + '_SWEREF99', lat, lng });
+                allPoints.push({ pointID: pointID, lat, lng });
             });
             
             if (!allPoints.length) {
