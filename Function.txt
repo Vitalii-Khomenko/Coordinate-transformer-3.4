@@ -1,5 +1,146 @@
 // Coordinate transformation functions (all comments in English)
 
+// SWEREF99 18 00 (EPSG:3011) to WGS84 (EPSG:4326) - Built-in Mathematical Implementation
+function sweref99ToWGS84(easting, northing) {
+    // SWEREF99 18 00 parameters (EPSG:3011)
+    var a = 6378137.0;              // Semi-major axis (GRS80)
+    var f = 1 / 298.257222101;      // Flattening (GRS80)
+    var lat0 = 0.0;                 // Latitude of natural origin (degrees)
+    var lon0 = 18.0;                // Longitude of natural origin (degrees)
+    var k0 = 1.0;                   // Scale factor at natural origin
+    var x0 = 150000.0;              // False easting (meters)
+    var y0 = 0.0;                   // False northing (meters)
+    
+    // Convert to radians
+    var DEG_TO_RAD = Math.PI / 180.0;
+    var RAD_TO_DEG = 180.0 / Math.PI;
+    
+    lat0 *= DEG_TO_RAD;
+    lon0 *= DEG_TO_RAD;
+    
+    // Derived constants
+    var b = a * (1 - f);           // Semi-minor axis
+    var e2 = 2 * f - f * f;        // First eccentricity squared
+    var e = Math.sqrt(e2);         // First eccentricity
+    var e1 = (1 - Math.sqrt(1 - e2)) / (1 + Math.sqrt(1 - e2));
+    
+    // Remove false easting and northing
+    var x = easting - x0;
+    var y = northing - y0;
+    
+    // Calculate meridional arc
+    var M0 = 0; // M0 = 0 since lat0 = 0
+    var M = M0 + y / k0;
+    
+    // Calculate footprint latitude
+    var mu = M / (a * (1 - e2/4 - 3*e2*e2/64 - 5*e2*e2*e2/256));
+    
+    var e1_2 = e1 * e1;
+    var e1_3 = e1_2 * e1;
+    var e1_4 = e1_3 * e1;
+    
+    var fp = mu + (3*e1/2 - 27*e1_3/32) * Math.sin(2*mu) 
+               + (21*e1_2/16 - 55*e1_4/32) * Math.sin(4*mu)
+               + (151*e1_3/96) * Math.sin(6*mu)
+               + (1097*e1_4/512) * Math.sin(8*mu);
+    
+    // Calculate radius of curvature
+    var sin_fp = Math.sin(fp);
+    var cos_fp = Math.cos(fp);
+    var tan_fp = Math.tan(fp);
+    var tan2_fp = tan_fp * tan_fp;
+    var tan4_fp = tan2_fp * tan2_fp;
+    
+    var n1 = a / Math.sqrt(1 - e2 * sin_fp * sin_fp);
+    var r1 = a * (1 - e2) / Math.pow(1 - e2 * sin_fp * sin_fp, 1.5);
+    var d = x / (n1 * k0);
+    var d2 = d * d;
+    var d3 = d2 * d;
+    var d4 = d3 * d;
+    var d5 = d4 * d;
+    var d6 = d5 * d;
+    
+    var c1 = e2 * cos_fp * cos_fp / (1 - e2);
+    var c1_2 = c1 * c1;
+    
+    // Calculate latitude
+    var lat = fp - (n1 * tan_fp / r1) * (d2/2 - (5 + 3*tan2_fp + 10*c1 - 4*c1_2 - 9*e2*cos_fp*cos_fp) * d4/24
+              + (61 + 90*tan2_fp + 298*c1 + 45*tan4_fp - 252*e2*cos_fp*cos_fp - 3*c1_2) * d6/720);
+    
+    // Calculate longitude
+    var lon = lon0 + (d - (1 + 2*tan2_fp + c1) * d3/6 
+                   + (5 - 2*c1 + 28*tan2_fp - 3*c1_2 + 8*e2*cos_fp*cos_fp + 24*tan4_fp) * d5/120) / cos_fp;
+    
+    // Convert to degrees
+    return {
+        lat: lat * RAD_TO_DEG,
+        lng: lon * RAD_TO_DEG
+    };
+}
+
+// WGS84 to SWEREF99 18 00 - Built-in Mathematical Implementation
+function wgs84ToSweref99(lat, lng) {
+    // SWEREF99 18 00 parameters (EPSG:3011)
+    var a = 6378137.0;              // Semi-major axis (GRS80)
+    var f = 1 / 298.257222101;      // Flattening (GRS80)
+    var lat0 = 0.0;                 // Latitude of natural origin (degrees)
+    var lon0 = 18.0;                // Longitude of natural origin (degrees)
+    var k0 = 1.0;                   // Scale factor at natural origin
+    var x0 = 150000.0;              // False easting (meters)
+    var y0 = 0.0;                   // False northing (meters)
+    
+    // Convert to radians
+    var DEG_TO_RAD = Math.PI / 180.0;
+    
+    lat *= DEG_TO_RAD;
+    lng *= DEG_TO_RAD;
+    lat0 *= DEG_TO_RAD;
+    lon0 *= DEG_TO_RAD;
+    
+    // Derived constants
+    var b = a * (1 - f);           // Semi-minor axis
+    var e2 = 2 * f - f * f;        // First eccentricity squared
+    var e = Math.sqrt(e2);         // First eccentricity
+    var n = (a - b) / (a + b);     // Third flattening
+    
+    // Calculate conformal latitude
+    var e_sin_lat = e * Math.sin(lat);
+    var q = Math.asinh(Math.tan(lat)) - e * Math.atanh(e_sin_lat);
+    var beta = Math.atan(Math.sinh(q));
+    
+    // Alpha series coefficients for forward transformation
+    var alpha1 = 0.5 * n - (2.0/3.0) * n * n * n + (5.0/16.0) * Math.pow(n, 5);
+    var alpha2 = (13.0/48.0) * n * n - (3.0/5.0) * Math.pow(n, 4) + (557.0/1440.0) * Math.pow(n, 6);
+    var alpha3 = (61.0/240.0) * Math.pow(n, 3) - (103.0/140.0) * Math.pow(n, 5);
+    var alpha4 = (49561.0/161280.0) * Math.pow(n, 4);
+    
+    // Calculate complex coordinates
+    var eta_prime = Math.atanh(Math.cos(beta) * Math.sin(lng - lon0));
+    var xi_prime = beta;
+    
+    // Apply series transformations
+    var xi = xi_prime;
+    for (var j = 1; j <= 4; j++) {
+        var alpha = [0, alpha1, alpha2, alpha3, alpha4][j];
+        xi += alpha * Math.sin(2 * j * xi_prime) * Math.cosh(2 * j * eta_prime);
+    }
+    
+    var eta = eta_prime;
+    for (var j = 1; j <= 4; j++) {
+        var alpha = [0, alpha1, alpha2, alpha3, alpha4][j];
+        eta += alpha * Math.cos(2 * j * xi_prime) * Math.sinh(2 * j * eta_prime);
+    }
+    
+    // Calculate final coordinates
+    var x = x0 + k0 * a * eta;
+    var y = y0 + k0 * a * xi;
+    
+    return {
+        x: x,
+        y: y
+    };
+}
+
 // Gauss-Krüger (GK, Bessel, Potsdam) to WGS84 (Google)
 function gk2geo(rw, hw) {
     // Easting (rw) and Northing (hw) in Potsdam Datum

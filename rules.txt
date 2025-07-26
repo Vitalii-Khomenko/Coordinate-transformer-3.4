@@ -1,58 +1,63 @@
-Short guide for formatting, checking, and publishing the coordinate transformation tool
+Project Development and Publishing Guidelines for Coordinate Transformer
 
-1. Interface Cleanup
-   - Remove unnecessary elements and buttons from HTML and JS.
-   - Ensure there are no references to deleted elements.
+## 1. Code Standards
+   - All code comments must be in English
+   - Use built-in mathematical formulas for coordinate transformations (no external libraries for calculations)
+   - Maintain clean, readable code structure
+   - Remove unused CSS properties and duplicate lines
+   - Test all coordinate conversions for mathematical accuracy
 
-2. Visual Design
-   - Use flexbox or grid for layout alignment.
-   - Check responsiveness for mobile devices.
-   - Ensure harmony and readability of all UI elements.
+## 2. Interface Requirements
+   - Remove unnecessary UI elements and buttons
+   - Ensure all HTML elements have corresponding JavaScript functions
+   - Use modern CSS (flexbox/grid) for responsive layout
+   - Test mobile device compatibility
+   - Maintain visual harmony and readability
 
-3. Documentation
-   - Create README.md in English with description, usage, requirements, and run instructions.
-   - Check grammar and structure of all text files.
-   - Update documentation whenever the project changes.
+## 3. Offline Functionality
+   - Core coordinate calculations must work without internet connection
+   - External CDN dependencies are acceptable only for non-essential features:
+     * jsPDF - for PDF export
+     * OpenLayers - for map visualization
+     * html2canvas - for map screenshots
+   - TXT import/export must work offline
+   - Data validation must be built-in
 
-4. Code Review
-   - Remove non-existent CSS properties.
-   - Ensure there are no duplicate or erroneous lines.
-   - Keep code clean and readable.
-   - All comments in code must be in English.
-   - Use only manual formulas for coordinate transformations (no external libraries).
-   - Test all coordinate conversions for accuracy.
+## 4. Documentation Standards
+   - README.md must be in English
+   - Include clear usage instructions and system requirements
+   - Document all supported coordinate systems with technical specifications
+   - Specify which functions require internet connectivity
+   - Update documentation when features change
 
-5. Git and Publishing
-   - Use .gitignore to exclude service/local files (e.g., rules.txt).
-   - Publish only necessary files (HTML, Function.txt, README.md).
-   - Use standard git commands for initialization and publishing.
+## 5. Mathematical Accuracy
+   - Implement precise geodetic transformation algorithms
+   - Use standard Helmert transformation for datum shifts
+   - Apply Transverse Mercator projection formulas correctly
+   - Include browser compatibility polyfills for mathematical functions
+   - Validate results against known reference points
 
-6. Recommendations
-   - Repeat these steps for new projects.
-   - Keep this file only locally, do not add to the repository.
-   - Update the rules as needed for workflow convenience.
+## 6. Repository Management
+   - Use .gitignore to exclude development files (rules.txt, screenshots, etc.)
+   - Publish only essential files: HTML, Function.txt, README.md, .gitignore
+   - Follow semantic versioning for releases
+   - Keep commit messages descriptive and in English
 
-Last updated: 2025-04-17
+## 7. Quality Assurance
+   - Test coordinate transformations with known control points
+   - Verify PDF export functionality
+   - Check map visualization accuracy
+   - Test file import/export with various data formats
+   - Validate browser compatibility (Chrome, Firefox, Edge, Safari)
 
----
+## 8. Project Structure
+   ```
+   coordinate-transformer.html  # Main application (self-contained)
+   Function.txt                # Mathematical algorithm documentation
+   README.md                   # Project documentation
+   .gitignore                  # Git exclusion rules
+   ```
 
-GitHub Publishing Instructions:
 
-1. Open terminal in the project folder.
-2. Run the following commands in order:
-   git init
-   git add README.md coordinate-transformer.html Function.txt .gitignore
-   git commit -m "first commit"
-   git branch -M main
-   git remote add origin 
-   git push -u origin main
-3. Make sure this rules file is not in the repository (it is in .gitignore).
-4. After publishing, check the project on GitHub.
+Last updated: 2025-07-26
 
-rm -rf .git
-git init
-git add .
-git commit -m "Initial commit"
-git branch -M main
-git remote add origin https://github.com/Vitalii-Khomenko/Coordinate-transformer-3.4.git
-git push -u --force origin main

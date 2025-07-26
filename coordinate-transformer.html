@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Coordinate Transformer</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.8.0/proj4.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v7.4.0/ol.css">
@@ -328,6 +327,7 @@
         <div class="tabs">
             <div class="tab active" onclick="switchTab('gk2wgs')">Gauß-Krüger (Bessel, Potsdam) to Dezimalgrad (WGS84)</div>
             <div class="tab" onclick="switchTab('wgs2gk')">WGS84 → GK</div>
+            <div class="tab" onclick="switchTab('sweref2wgs')">SWEREF99 18 00 → WGS84</div>
             <div class="tab" onclick="switchTab('map')">Map</div>
         </div>
 
@@ -389,6 +389,38 @@
                     </tr>
                 </thead>
                 <tbody id="wgsResultsBody">
+                </tbody>
+            </table>
+        </div>
+
+        <div id="sweref2wgs" class="tab-content">
+            <div class="input-form">
+                <div class="form-group">
+                    <div class="input-description">Enter: <b>PointID Easting Northing Height</b> (SWEREF99 18 00, EPSG:3011)</div>
+                    <textarea id="swerefCoordinates" rows="10" placeholder="Example:\n1029 674189.267 6557692.868 321.609"></textarea>
+                </div>
+                <div class="button-group">
+                    <button onclick="convertSwerfToWGS84()">Convert</button>
+                    <button onclick="clearSwerefInput()" class="save-txt">Clear Input</button>
+                    <button onclick="document.getElementById('swerefFileInput').click()" class="import-txt">Import TXT</button>
+                    <button onclick="saveSwerefToTxt()" class="save-txt">Save as TXT</button>
+                    <button onclick="saveSwerefToPdf()" class="save-pdf">Save as PDF</button>
+                </div>
+                <input type="file" id="swerefFileInput" accept=".txt" style="display:none" onchange="handleSwerefFileImport(event)">
+            </div>
+            <table id="swerefResultsTable">
+                <thead>
+                    <tr>
+                        <th>PointID</th>
+                        <th>Easting (SWEREF99)</th>
+                        <th>Northing (SWEREF99)</th>
+                        <th>Height</th>
+                        <th>Latitude (WGS84)</th>
+                        <th>Longitude (WGS84)</th>
+                        <th>Google Maps</th>
+                    </tr>
+                </thead>
+                <tbody id="swerefResultsBody">
                 </tbody>
             </table>
         </div>
@@ -585,6 +617,427 @@
             return ll;
         }
 
+        // Mathematical helper functions for older browser compatibility
+        Math.cosh = Math.cosh || function(x) {
+            return (Math.exp(x) + Math.exp(-x)) / 2;
+        };
+        
+        Math.sinh = Math.sinh || function(x) {
+            return (Math.exp(x) - Math.exp(-x)) / 2;
+        };
+        
+        Math.tanh = Math.tanh || function(x) {
+            var exp2x = Math.exp(2 * x);
+            return (exp2x - 1) / (exp2x + 1);
+        };
+        
+        Math.asinh = Math.asinh || function(x) {
+            return Math.log(x + Math.sqrt(x * x + 1));
+        };
+        
+        Math.atanh = Math.atanh || function(x) {
+            return 0.5 * Math.log((1 + x) / (1 - x));
+        };
+
+        // SWEREF99 18 00 to WGS84 conversion functions - Built-in Mathematical Implementation
+        function sweref99ToWGS84(easting, northing) {
+            // SWEREF99 18 00 parameters (EPSG:3011)
+            var a = 6378137.0;              // Semi-major axis (GRS80)
+            var f = 1 / 298.257222101;      // Flattening (GRS80)
+            var lat0 = 0.0;                 // Latitude of natural origin (degrees)
+            var lon0 = 18.0;                // Longitude of natural origin (degrees)
+            var k0 = 1.0;                   // Scale factor at natural origin
+            var x0 = 150000.0;              // False easting (meters)
+            var y0 = 0.0;                   // False northing (meters)
+            
+            // Convert to radians
+            var DEG_TO_RAD = Math.PI / 180.0;
+            var RAD_TO_DEG = 180.0 / Math.PI;
+            
+            lat0 *= DEG_TO_RAD;
+            lon0 *= DEG_TO_RAD;
+            
+            // Derived constants
+            var b = a * (1 - f);           // Semi-minor axis
+            var e2 = 2 * f - f * f;        // First eccentricity squared
+            var e = Math.sqrt(e2);         // First eccentricity
+            var e1 = (1 - Math.sqrt(1 - e2)) / (1 + Math.sqrt(1 - e2));
+            
+            // Remove false easting and northing
+            var x = easting - x0;
+            var y = northing - y0;
+            
+            // Calculate meridional arc
+            var M0 = 0; // M0 = 0 since lat0 = 0
+            var M = M0 + y / k0;
+            
+            // Calculate footprint latitude
+            var mu = M / (a * (1 - e2/4 - 3*e2*e2/64 - 5*e2*e2*e2/256));
+            
+            var e1_2 = e1 * e1;
+            var e1_3 = e1_2 * e1;
+            var e1_4 = e1_3 * e1;
+            
+            var fp = mu + (3*e1/2 - 27*e1_3/32) * Math.sin(2*mu) 
+                       + (21*e1_2/16 - 55*e1_4/32) * Math.sin(4*mu)
+                       + (151*e1_3/96) * Math.sin(6*mu)
+                       + (1097*e1_4/512) * Math.sin(8*mu);
+            
+            // Calculate radius of curvature
+            var sin_fp = Math.sin(fp);
+            var cos_fp = Math.cos(fp);
+            var tan_fp = Math.tan(fp);
+            var tan2_fp = tan_fp * tan_fp;
+            var tan4_fp = tan2_fp * tan2_fp;
+            
+            var n1 = a / Math.sqrt(1 - e2 * sin_fp * sin_fp);
+            var r1 = a * (1 - e2) / Math.pow(1 - e2 * sin_fp * sin_fp, 1.5);
+            var d = x / (n1 * k0);
+            var d2 = d * d;
+            var d3 = d2 * d;
+            var d4 = d3 * d;
+            var d5 = d4 * d;
+            var d6 = d5 * d;
+            
+            var c1 = e2 * cos_fp * cos_fp / (1 - e2);
+            var c1_2 = c1 * c1;
+            
+            // Calculate latitude
+            var lat = fp - (n1 * tan_fp / r1) * (d2/2 - (5 + 3*tan2_fp + 10*c1 - 4*c1_2 - 9*e2*cos_fp*cos_fp) * d4/24
+                      + (61 + 90*tan2_fp + 298*c1 + 45*tan4_fp - 252*e2*cos_fp*cos_fp - 3*c1_2) * d6/720);
+            
+            // Calculate longitude
+            var lon = lon0 + (d - (1 + 2*tan2_fp + c1) * d3/6 
+                           + (5 - 2*c1 + 28*tan2_fp - 3*c1_2 + 8*e2*cos_fp*cos_fp + 24*tan4_fp) * d5/120) / cos_fp;
+            
+            // Convert to degrees
+            return {
+                lat: lat * RAD_TO_DEG,
+                lng: lon * RAD_TO_DEG
+            };
+        }
+
+        // WGS84 to SWEREF99 18 00 conversion - Built-in Mathematical Implementation
+        function wgs84ToSweref99(lat, lng) {
+            // SWEREF99 18 00 parameters (EPSG:3011)
+            var a = 6378137.0;              // Semi-major axis (GRS80)
+            var f = 1 / 298.257222101;      // Flattening (GRS80)
+            var lat0 = 0.0;                 // Latitude of natural origin (degrees)
+            var lon0 = 18.0;                // Longitude of natural origin (degrees)
+            var k0 = 1.0;                   // Scale factor at natural origin
+            var x0 = 150000.0;              // False easting (meters)
+            var y0 = 0.0;                   // False northing (meters)
+            
+            // Convert to radians
+            var DEG_TO_RAD = Math.PI / 180.0;
+            
+            lat *= DEG_TO_RAD;
+            lng *= DEG_TO_RAD;
+            lat0 *= DEG_TO_RAD;
+            lon0 *= DEG_TO_RAD;
+            
+            // Derived constants
+            var b = a * (1 - f);           // Semi-minor axis
+            var e2 = 2 * f - f * f;        // First eccentricity squared
+            var e = Math.sqrt(e2);         // First eccentricity
+            
+            // Calculate radius of curvature in the prime vertical
+            var sin_lat = Math.sin(lat);
+            var cos_lat = Math.cos(lat);
+            var tan_lat = Math.tan(lat);
+            var tan2_lat = tan_lat * tan_lat;
+            var tan4_lat = tan2_lat * tan2_lat;
+            
+            var n = a / Math.sqrt(1 - e2 * sin_lat * sin_lat);
+            var c = e2 * cos_lat * cos_lat / (1 - e2);
+            var c2 = c * c;
+            var a2 = (lng - lon0) * cos_lat;
+            var a2_2 = a2 * a2;
+            var a2_3 = a2_2 * a2;
+            var a2_4 = a2_3 * a2;
+            var a2_5 = a2_4 * a2;
+            var a2_6 = a2_5 * a2;
+            
+            // Calculate meridional arc
+            var M0 = 0; // M0 = 0 since lat0 = 0
+            var M = a * ((1 - e2/4 - 3*e2*e2/64 - 5*e2*e2*e2/256) * lat
+                       - (3*e2/8 + 3*e2*e2/32 + 45*e2*e2*e2/1024) * Math.sin(2*lat)
+                       + (15*e2*e2/256 + 45*e2*e2*e2/1024) * Math.sin(4*lat)
+                       - (35*e2*e2*e2/3072) * Math.sin(6*lat));
+            
+            // Calculate coordinates
+            var x = k0 * n * (a2 + (1 - tan2_lat + c) * a2_3 / 6
+                           + (5 - 18*tan2_lat + tan4_lat + 72*c - 58*e2*cos_lat*cos_lat) * a2_5 / 120);
+            
+            var y = k0 * (M - M0 + n * tan_lat * (a2_2/2 + (5 - tan2_lat + 9*c + 4*c2) * a2_4/24
+                          + (61 - 58*tan2_lat + tan4_lat + 600*c - 330*e2*cos_lat*cos_lat) * a2_6/720));
+            
+            return {
+                x: x + x0,
+                y: y + y0
+            };
+        }
+
+        function convertSwerfToWGS84() {
+            const input = document.getElementById('swerefCoordinates').value;
+            const lines = input.trim().split('\n');
+            const resultsBody = document.getElementById('swerefResultsBody');
+            resultsBody.innerHTML = '';
+            
+            let errorMessage = '';
+            let errorCount = 0;
+            
+            lines.forEach((line, idx) => {
+                const trimmed = line.trim();
+                if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('//')) return;
+                
+                const parts = trimmed.split(/\s+/);
+                if (parts.length < 4) {
+                    errorMessage += `Line ${idx+1}: Not enough values (expected PointID Easting Northing Height)\n`;
+                    errorCount++;
+                    return;
+                }
+                
+                const [pointID, x, y, height] = parts;
+                const xNum = parseFloat(x);
+                const yNum = parseFloat(y);
+                const hNum = parseFloat(height);
+                
+                if (!isFinite(xNum) || !isFinite(yNum) || !isFinite(hNum)) {
+                    errorMessage += `Line ${idx+1}: Invalid number(s)\n`;
+                    errorCount++;
+                    return;
+                }
+                
+                try {
+                    const { lat, lng } = sweref99ToWGS84(xNum, yNum);
+                    
+                    if (!isFinite(lat) || !isFinite(lng)) {
+                        errorMessage += `Line ${idx+1}: Conversion failed - invalid result\n`;
+                        errorCount++;
+                        return;
+                    }
+                    
+                    const row = document.createElement('tr');
+                    const mapsLink = getGoogleMapsLink(lat, lng);
+                    
+                    row.innerHTML = `
+                        <td>${pointID}</td>
+                        <td>${xNum.toFixed(3)}</td>
+                        <td>${yNum.toFixed(3)}</td>
+                        <td>${hNum.toFixed(3)}</td>
+                        <td>${lat.toFixed(6)}</td>
+                        <td>${lng.toFixed(6)}</td>
+                        <td><a href="${mapsLink}" target="_blank" class="map-link">View on Map</a></td>
+                    `;
+                    resultsBody.appendChild(row);
+                } catch (error) {
+                    errorMessage += `Line ${idx+1}: Error converting coordinates: ${error && error.message ? error.message : error}\n`;
+                    errorCount++;
+                }
+            });
+            
+            if (errorCount > 0) {
+                alert('Errors found during conversion:\n\n' + errorMessage);
+            }
+            
+            // Update map if available
+            if (typeof initMap === 'function') {
+                initMap();
+            }
+            if (typeof updateMap === 'function') {
+                updateSwerefMap();
+            }
+        }
+
+        function clearSwerefInput() {
+            document.getElementById('swerefCoordinates').value = '';
+            document.getElementById('swerefResultsBody').innerHTML = '';
+        }
+
+        function handleSwerefFileImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            if (!file.type.match('text/plain')) {
+                alert('Please select a text file (.txt)');
+                event.target.value = '';
+                return;
+            }
+            
+            if (file.size > 5 * 1024 * 1024) {
+                alert('File too large. Maximum size: 5MB');
+                event.target.value = '';
+                return;
+            }
+            
+            lastImportedTxtFileName = file.name;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('swerefCoordinates').value = e.target.result;
+            };
+            reader.onerror = function() {
+                alert('Error reading file');
+                event.target.value = '';
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+
+        function saveSwerefToTxt() {
+            const rows = document.querySelectorAll('#swerefResultsBody tr');
+            if (!rows.length) {
+                alert('No data to save.');
+                return;
+            }
+            
+            let content = 'PointID\tEasting_SWEREF99\tNorthing_SWEREF99\tHeight\tLatitude_WGS84\tLongitude_WGS84\n';
+            
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells.length >= 6) {
+                    content += `${cells[0].textContent}\t${cells[1].textContent}\t${cells[2].textContent}\t${cells[3].textContent}\t${cells[4].textContent}\t${cells[5].textContent}\n`;
+                }
+            });
+            
+            let fileName = 'sweref99_to_wgs84_results.txt';
+            if (lastImportedTxtFileName && lastImportedTxtFileName.toLowerCase().endsWith('.txt')) {
+                fileName = lastImportedTxtFileName.replace(/\.txt$/i, '_converted.txt');
+            } else {
+                const now = new Date();
+                const dd = String(now.getDate()).padStart(2, '0');
+                const mm = String(now.getMonth() + 1).padStart(2, '0');
+                const yyyy = now.getFullYear();
+                fileName = `sweref99_results_${dd}${mm}${yyyy}.txt`;
+            }
+            
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 100);
+        }
+
+        function saveSwerefToPdf() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            const rows = document.querySelectorAll('#swerefResultsBody tr');
+            if (!rows.length) {
+                alert('No data to export.');
+                return;
+            }
+            
+            const tableData = [];
+            const headers = ['PointID', 'Easting (SWEREF99)', 'Northing (SWEREF99)', 'Height', 'Latitude (WGS84)', 'Longitude (WGS84)'];
+            
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells.length >= 6) {
+                    tableData.push([
+                        cells[0].textContent,
+                        cells[1].textContent,
+                        cells[2].textContent,
+                        cells[3].textContent,
+                        cells[4].textContent,
+                        cells[5].textContent
+                    ]);
+                }
+            });
+            
+            doc.autoTable({
+                head: [headers],
+                body: tableData,
+                styles: { fontSize: 8 },
+                columnStyles: {
+                    0: { cellWidth: 20 },
+                    1: { cellWidth: 30 },
+                    2: { cellWidth: 30 },
+                    3: { cellWidth: 20 },
+                    4: { cellWidth: 30 },
+                    5: { cellWidth: 30 }
+                }
+            });
+            
+            let fileName = 'sweref99_to_wgs84_results.pdf';
+            if (lastImportedTxtFileName && lastImportedTxtFileName.toLowerCase().endsWith('.txt')) {
+                fileName = lastImportedTxtFileName.replace(/\.txt$/i, '_converted.pdf');
+            } else {
+                const now = new Date();
+                const dd = String(now.getDate()).padStart(2, '0');
+                const mm = String(now.getMonth() + 1).padStart(2, '0');
+                const yyyy = now.getFullYear();
+                fileName = `sweref99_results_${dd}${mm}${yyyy}.pdf`;
+            }
+            
+            doc.save(fileName);
+        }
+
+        function updateSwerefMap() {
+            if (!map || !vectorSource) return;
+            
+            vectorSource.clear();
+            const rows = document.querySelectorAll('#swerefResultsBody tr');
+            let features = [];
+            let points = [];
+            
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells.length < 6) return;
+                
+                const pointID = cells[0].textContent.trim();
+                const lat = parseFloat(cells[4].textContent);
+                const lng = parseFloat(cells[5].textContent);
+                
+                if (!isFinite(lat) || !isFinite(lng)) return;
+                points.push({ pointID, lat, lng });
+            });
+            
+            if (points.length > 0) {
+                features = points.map(pt => {
+                    const pointFeature = new ol.Feature({
+                        geometry: new ol.geom.Point(ol.proj.fromLonLat([pt.lng, pt.lat]))
+                    });
+                    pointFeature.setStyle(new ol.style.Style({
+                        image: new ol.style.Circle({
+                            radius: 8,
+                            fill: new ol.style.Fill({ color: '#4CAF50' }),
+                            stroke: new ol.style.Stroke({ color: '#fff', width: 2 })
+                        })
+                    }));
+                    
+                    const textFeature = new ol.Feature({
+                        geometry: new ol.geom.Point(ol.proj.fromLonLat([pt.lng, pt.lat]))
+                    });
+                    textFeature.setStyle(new ol.style.Style({
+                        text: new ol.style.Text({
+                            text: pt.pointID,
+                            font: 'bold 13px Arial',
+                            fill: new ol.style.Fill({ color: '#FF9800' }),
+                            stroke: new ol.style.Stroke({ color: '#fff', width: 3 }),
+                            offsetY: -18
+                        })
+                    }));
+                    
+                    vectorSource.addFeature(pointFeature);
+                    vectorSource.addFeature(textFeature);
+                    return [pointFeature, textFeature];
+                });
+                
+                map.getView().setCenter(ol.proj.fromLonLat([points[0].lng, points[0].lat]));
+                map.getView().setZoom(13);
+            } else {
+                map.getView().setCenter(ol.proj.fromLonLat([10.0, 51.0]));
+                map.getView().setZoom(6);
+            }
+        }
+
         function convertWGS84ToGK() {
             const input = document.getElementById('wgsCoordinates').value;
             const lines = input.trim().split('\n');
@@ -665,30 +1118,51 @@
         function updateMap() {
             if (!map || !vectorSource) return;
             vectorSource.clear();
-            const rows = document.querySelectorAll('#resultsBody tr');
-            let features = [];
-            let points = [];
-            rows.forEach(row => {
+            
+            // Check all result tables for points
+            let allPoints = [];
+            
+            // GK to WGS84 results
+            const gkRows = document.querySelectorAll('#resultsBody tr');
+            gkRows.forEach(row => {
                 const cells = row.querySelectorAll('td');
                 if (cells.length < 6) return;
                 const pointID = cells[0].textContent.trim();
                 const lat = parseFloat(cells[4].textContent);
                 const lng = parseFloat(cells[5].textContent);
                 if (!isFinite(lat) || !isFinite(lng)) return;
-                points.push({ pointID, lat, lng });
+                allPoints.push({ pointID, lat, lng, source: 'GK' });
             });
-            if (points.length > 0) {
-                features = points.map(pt => {
+            
+            // SWEREF99 to WGS84 results
+            const swerefRows = document.querySelectorAll('#swerefResultsBody tr');
+            swerefRows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells.length < 6) return;
+                const pointID = cells[0].textContent.trim();
+                const lat = parseFloat(cells[4].textContent);
+                const lng = parseFloat(cells[5].textContent);
+                if (!isFinite(lat) || !isFinite(lng)) return;
+                allPoints.push({ pointID, lat, lng, source: 'SWEREF99' });
+            });
+            
+            if (allPoints.length > 0) {
+                allPoints.forEach(pt => {
                     const pointFeature = new ol.Feature({
                         geometry: new ol.geom.Point(ol.proj.fromLonLat([pt.lng, pt.lat]))
                     });
+                    
+                    // Different colors for different sources
+                    const color = pt.source === 'SWEREF99' ? '#2196F3' : '#4CAF50';
+                    
                     pointFeature.setStyle(new ol.style.Style({
                         image: new ol.style.Circle({
                             radius: 8,
-                            fill: new ol.style.Fill({ color: '#4CAF50' }),
+                            fill: new ol.style.Fill({ color: color }),
                             stroke: new ol.style.Stroke({ color: '#fff', width: 2 })
                         })
                     }));
+                    
                     const textFeature = new ol.Feature({
                         geometry: new ol.geom.Point(ol.proj.fromLonLat([pt.lng, pt.lat]))
                     });
@@ -701,16 +1175,244 @@
                             offsetY: -18
                         })
                     }));
+                    
                     vectorSource.addFeature(pointFeature);
                     vectorSource.addFeature(textFeature);
-                    return [pointFeature, textFeature];
                 });
-                map.getView().setCenter(ol.proj.fromLonLat([points[0].lng, points[0].lat]));
+                
+                map.getView().setCenter(ol.proj.fromLonLat([allPoints[0].lng, allPoints[0].lat]));
                 map.getView().setZoom(13);
             } else {
                 map.getView().setCenter(ol.proj.fromLonLat([10.0, 51.0]));
                 map.getView().setZoom(6);
             }
+        }
+
+        function clearInput() {
+            document.getElementById('coordinates').value = '';
+            document.getElementById('resultsBody').innerHTML = '';
+        }
+
+        function clearWGSInput() {
+            document.getElementById('wgsCoordinates').value = '';
+            document.getElementById('wgsResultsBody').innerHTML = '';
+        }
+
+        function handleWGSFileImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            if (!file.type.match('text/plain')) {
+                alert('Please select a text file (.txt)');
+                event.target.value = '';
+                return;
+            }
+            
+            if (file.size > 5 * 1024 * 1024) {
+                alert('File too large. Maximum size: 5MB');
+                event.target.value = '';
+                return;
+            }
+            
+            lastImportedTxtFileName = file.name;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('wgsCoordinates').value = e.target.result;
+            };
+            reader.onerror = function() {
+                alert('Error reading file');
+                event.target.value = '';
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+
+        function saveToTxt() {
+            const rows = document.querySelectorAll('#resultsBody tr');
+            if (!rows.length) {
+                alert('No data to save.');
+                return;
+            }
+            
+            let content = 'PointID\tEasting_GK\tNorthing_GK\tHeight\tLatitude_WGS84\tLongitude_WGS84\n';
+            
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells.length >= 6) {
+                    content += `${cells[0].textContent}\t${cells[1].textContent}\t${cells[2].textContent}\t${cells[3].textContent}\t${cells[4].textContent}\t${cells[5].textContent}\n`;
+                }
+            });
+            
+            let fileName = 'gk_to_wgs84_results.txt';
+            if (lastImportedTxtFileName && lastImportedTxtFileName.toLowerCase().endsWith('.txt')) {
+                fileName = lastImportedTxtFileName.replace(/\.txt$/i, '_converted.txt');
+            } else {
+                const now = new Date();
+                const dd = String(now.getDate()).padStart(2, '0');
+                const mm = String(now.getMonth() + 1).padStart(2, '0');
+                const yyyy = now.getFullYear();
+                fileName = `gk_results_${dd}${mm}${yyyy}.txt`;
+            }
+            
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 100);
+        }
+
+        function saveToPdf() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            const rows = document.querySelectorAll('#resultsBody tr');
+            if (!rows.length) {
+                alert('No data to export.');
+                return;
+            }
+            
+            const tableData = [];
+            const headers = ['PointID', 'Easting (GK)', 'Northing (GK)', 'Height', 'Latitude (WGS84)', 'Longitude (WGS84)'];
+            
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells.length >= 6) {
+                    tableData.push([
+                        cells[0].textContent,
+                        cells[1].textContent,
+                        cells[2].textContent,
+                        cells[3].textContent,
+                        cells[4].textContent,
+                        cells[5].textContent
+                    ]);
+                }
+            });
+            
+            doc.autoTable({
+                head: [headers],
+                body: tableData,
+                styles: { fontSize: 8 },
+                columnStyles: {
+                    0: { cellWidth: 20 },
+                    1: { cellWidth: 30 },
+                    2: { cellWidth: 30 },
+                    3: { cellWidth: 20 },
+                    4: { cellWidth: 30 },
+                    5: { cellWidth: 30 }
+                }
+            });
+            
+            let fileName = 'gk_to_wgs84_results.pdf';
+            if (lastImportedTxtFileName && lastImportedTxtFileName.toLowerCase().endsWith('.txt')) {
+                fileName = lastImportedTxtFileName.replace(/\.txt$/i, '_converted.pdf');
+            } else {
+                const now = new Date();
+                const dd = String(now.getDate()).padStart(2, '0');
+                const mm = String(now.getMonth() + 1).padStart(2, '0');
+                const yyyy = now.getFullYear();
+                fileName = `gk_results_${dd}${mm}${yyyy}.pdf`;
+            }
+            
+            doc.save(fileName);
+        }
+
+        function saveWGS84ToTxt() {
+            const rows = document.querySelectorAll('#wgsResultsBody tr');
+            if (!rows.length) {
+                alert('No data to save.');
+                return;
+            }
+            
+            let content = 'PointID\tLatitude_WGS84\tLongitude_WGS84\tEasting_GK\tNorthing_GK\n';
+            
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells.length >= 5) {
+                    content += `${cells[0].textContent}\t${cells[1].textContent}\t${cells[2].textContent}\t${cells[3].textContent}\t${cells[4].textContent}\n`;
+                }
+            });
+            
+            let fileName = 'wgs84_to_gk_results.txt';
+            if (lastImportedTxtFileName && lastImportedTxtFileName.toLowerCase().endsWith('.txt')) {
+                fileName = lastImportedTxtFileName.replace(/\.txt$/i, '_converted.txt');
+            } else {
+                const now = new Date();
+                const dd = String(now.getDate()).padStart(2, '0');
+                const mm = String(now.getMonth() + 1).padStart(2, '0');
+                const yyyy = now.getFullYear();
+                fileName = `wgs84_results_${dd}${mm}${yyyy}.txt`;
+            }
+            
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 100);
+        }
+
+        function saveWGS84ToPdf() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            const rows = document.querySelectorAll('#wgsResultsBody tr');
+            if (!rows.length) {
+                alert('No data to export.');
+                return;
+            }
+            
+            const tableData = [];
+            const headers = ['PointID', 'Latitude (WGS84)', 'Longitude (WGS84)', 'Easting (GK)', 'Northing (GK)'];
+            
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells.length >= 5) {
+                    tableData.push([
+                        cells[0].textContent,
+                        cells[1].textContent,
+                        cells[2].textContent,
+                        cells[3].textContent,
+                        cells[4].textContent
+                    ]);
+                }
+            });
+            
+            doc.autoTable({
+                head: [headers],
+                body: tableData,
+                styles: { fontSize: 8 },
+                columnStyles: {
+                    0: { cellWidth: 25 },
+                    1: { cellWidth: 35 },
+                    2: { cellWidth: 35 },
+                    3: { cellWidth: 35 },
+                    4: { cellWidth: 35 }
+                }
+            });
+            
+            let fileName = 'wgs84_to_gk_results.pdf';
+            if (lastImportedTxtFileName && lastImportedTxtFileName.toLowerCase().endsWith('.txt')) {
+                fileName = lastImportedTxtFileName.replace(/\.txt$/i, '_converted.pdf');
+            } else {
+                const now = new Date();
+                const dd = String(now.getDate()).padStart(2, '0');
+                const mm = String(now.getMonth() + 1).padStart(2, '0');
+                const yyyy = now.getFullYear();
+                fileName = `wgs84_results_${dd}${mm}${yyyy}.pdf`;
+            }
+            
+            doc.save(fileName);
         }
 
         function convertCoordinates() {
@@ -845,26 +1547,50 @@
         }
 
         function exportKML() {
-            const rows = document.querySelectorAll('#resultsBody tr');
-            if (!rows.length) {
-                alert('No points to export.');
-                return;
-            }
-            let kml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
-            kml += `<kml xmlns="http://www.opengis.net/kml/2.2">\n<Document>\n`;
-            rows.forEach(row => {
+            // Collect points from all result tables
+            let allPoints = [];
+            
+            // GK to WGS84 results
+            const gkRows = document.querySelectorAll('#resultsBody tr');
+            gkRows.forEach(row => {
                 const cells = row.querySelectorAll('td');
                 if (cells.length < 6) return;
                 const pointID = cells[0].textContent.trim();
                 const lat = parseFloat(cells[4].textContent);
                 const lng = parseFloat(cells[5].textContent);
                 if (!isFinite(lat) || !isFinite(lng)) return;
+                allPoints.push({ pointID: pointID + '_GK', lat, lng });
+            });
+            
+            // SWEREF99 to WGS84 results
+            const swerefRows = document.querySelectorAll('#swerefResultsBody tr');
+            swerefRows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells.length < 6) return;
+                const pointID = cells[0].textContent.trim();
+                const lat = parseFloat(cells[4].textContent);
+                const lng = parseFloat(cells[5].textContent);
+                if (!isFinite(lat) || !isFinite(lng)) return;
+                allPoints.push({ pointID: pointID + '_SWEREF99', lat, lng });
+            });
+            
+            if (!allPoints.length) {
+                alert('No points to export.');
+                return;
+            }
+            
+            let kml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+            kml += `<kml xmlns="http://www.opengis.net/kml/2.2">\n<Document>\n`;
+            
+            allPoints.forEach(point => {
                 kml += `<Placemark>\n`;
-                kml += `<name>${pointID}</name>\n`;
-                kml += `<Point><coordinates>${lng},${lat},0</coordinates></Point>\n`;
+                kml += `<name>${point.pointID}</name>\n`;
+                kml += `<Point><coordinates>${point.lng},${point.lat},0</coordinates></Point>\n`;
                 kml += `</Placemark>\n`;
             });
+            
             kml += `</Document>\n</kml>`;
+            
             let fileName = 'points.kml';
             if (lastImportedTxtFileName && lastImportedTxtFileName.toLowerCase().endsWith('.txt')) {
                 fileName = lastImportedTxtFileName.replace(/\.txt$/i, '.kml');
@@ -875,6 +1601,7 @@
                 const yyyy = now.getFullYear();
                 fileName = `${dd}${mm}${yyyy}.kml`;
             }
+            
             const blob = new Blob([kml], { type: 'application/vnd.google-earth.kml+xml' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
