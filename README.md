@@ -1,4 +1,4 @@
-# Coordinate Transformer 3.4
+# Universal Coordinate Converter
 
 Professional web-based tool for converting coordinates between different coordinate systems with map visualization and batch import/export capabilities.
 
@@ -6,21 +6,24 @@ Professional web-based tool for converting coordinates between different coordin
 
 - **Gauß-Krüger (Bessel, Potsdam)** ↔ **WGS84** (Germany)
 - **SWEREF99 18 00 (EPSG:3011)** ↔ **WGS84** (Sweden)
-- Both systems support forward and inverse transformations
+- **WGS84** → **Multiple Target Systems** (dropdown selection)
+- All systems support bidirectional transformations with high precision
 
 ## Key Features
 
 ### ✅ Offline Functions (work without internet):
 - **Coordinate mathematical calculations** - all transformations use built-in geodetic algorithms
-- **TXT file import/export** - batch data processing
-- **Basic results export** - save to text files
-- **Data validation** - verification of input coordinate accuracy
-- **KML export** - Google Earth compatible format
+- **Multi-target WGS84 conversion** - dropdown selection between GK and SWEREF99 systems
+- **TXT file import/export** - batch data processing with system-specific file naming
+- **Dynamic table headers** - automatically adjust based on selected coordinate system
+- **Data validation** - comprehensive verification of input coordinate accuracy
+- **KML export** - Google Earth compatible format with clean point naming
 
 ### 🌐 Internet-dependent Functions:
-- **Map visualization** - OpenStreetMap tiles for display
-- **PDF export** - external libraries jsPDF and html2canvas
+- **Map visualization** - OpenStreetMap tiles with multi-source point display
+- **PDF export** - system-aware headers and file naming (jsPDF and html2canvas)
 - **Google Maps links** - quick navigation to coordinate points
+- **Map screenshots** - export interactive maps as PDF with quality control
 
 ### 📊 External Dependencies (CDN):
 - **jsPDF** (~500KB) - PDF document generation
@@ -36,22 +39,35 @@ Professional web-based tool for converting coordinates between different coordin
 
 ## Usage
 
-1. Open `coordinate-transformer.html` in your web browser (no installation required)
+1. Open `universal-coordinate-converter.html` in your web browser (no installation required)
 2. Select the desired tab:
-   - **Gauß-Krüger → WGS84:** Convert German coordinates
-   - **WGS84 → GK:** Reverse transformation to GK
-   - **SWEREF99 18 00 → WGS84:** Convert Swedish coordinates
-   - **Map:** Visualize points and export map
-3. Enter data or import TXT file
-4. Click **Convert** and export results
+   - **Gauß-Krüger → WGS84:** Convert German coordinates to latitude/longitude
+   - **WGS84 → Target System:** Convert WGS84 coordinates with dropdown selection:
+     - Target: **Gauß-Krüger (GK)** - German coordinate system
+     - Target: **SWEREF99 18 00** - Swedish coordinate system
+   - **SWEREF99 18 00 → WGS84:** Convert Swedish coordinates to latitude/longitude
+   - **Map:** Visualize all converted points and export map as PDF/KML
+3. Enter data manually or import TXT file
+4. Select target coordinate system (when applicable)
+5. Click **Convert** and export results in multiple formats
 
 ## Input Data Format
 
+**Gauß-Krüger and SWEREF99 to WGS84:**
 ```
 PointID Easting Northing Height
 1029 3568189.267 5657692.868 321.609
 1030 674189.267 6557692.868 421.609
 ```
+
+**WGS84 to Target System:**
+```
+PointID Latitude Longitude
+1029 51.05031687 9.971396507
+1030 55.12345678 18.98765432
+```
+
+*Note: Target coordinate system (GK or SWEREF99) is selected via dropdown menu.*
 
 ## System Requirements
 
@@ -62,7 +78,7 @@ PointID Easting Northing Height
 
 ## Project Structure
 
-- `coordinate-transformer.html` — main application (all functions in one file)
+- `universal-coordinate-converter.html` — main application (all functions in one file)
 - `Function.txt` — mathematical algorithm documentation for coordinate transformations
 - `README.md` — this documentation
 
@@ -75,10 +91,12 @@ PointID Easting Northing Height
 
 ## Technical Implementation
 
-- **Datum transformations:** Seven-parameter Helmert transformation
-- **Projection algorithms:** Standard Transverse Mercator formulas
-- **Error handling:** Comprehensive validation and user feedback
-- **Self-contained:** No installation or server requirements
+- **Enhanced UI:** Dropdown selection for target coordinate systems in WGS84 conversion tab
+- **Dynamic functionality:** Table headers and export filenames adjust based on selected system
+- **Datum transformations:** Seven-parameter Helmert transformation for GK ↔ WGS84
+- **Projection algorithms:** Standard Transverse Mercator formulas for SWEREF99
+- **Error handling:** Comprehensive validation with detailed user feedback
+- **Self-contained:** No installation or server requirements - runs entirely in browser
 
 ## License
 
