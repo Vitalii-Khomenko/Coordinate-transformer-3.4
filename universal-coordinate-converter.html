@@ -391,8 +391,8 @@
                         <th>PointID</th>
                         <th>Latitude (WGS84)</th>
                         <th>Longitude (WGS84)</th>
-                        <th id="eastingHeader">Easting (GK)</th>
-                        <th id="northingHeader">Northing (GK)</th>
+                        <th id="eastingHeader">Easting</th>
+                        <th id="northingHeader">Northing</th>
                     </tr>
                 </thead>
                 <tbody id="wgsResultsBody">
@@ -1059,8 +1059,8 @@
                 eastingHeader.textContent = 'Easting (SWEREF99)';
                 northingHeader.textContent = 'Northing (SWEREF99)';
             } else {
-                eastingHeader.textContent = 'Easting (GK)';
-                northingHeader.textContent = 'Northing (GK)';
+                eastingHeader.textContent = 'Easting';
+                northingHeader.textContent = 'Northing';
             }
             
             let errorMessage = '';
