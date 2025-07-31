@@ -933,7 +933,7 @@
 
         function saveSwerefToPdf() {
             const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
+            const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
             
             const rows = document.querySelectorAll('#swerefResultsBody tr');
             if (!rows.length) {
@@ -942,18 +942,23 @@
             }
             
             const tableData = [];
-            const headers = ['PointID', 'Easting (SWEREF99)', 'Northing (SWEREF99)', 'Height', 'Latitude (WGS84)', 'Longitude (WGS84)'];
-            
+            const headers = ['PointID', 'Easting (SWEREF99)', 'Northing (SWEREF99)', 'Height', 'Latitude (WGS84)', 'Longitude (WGS84)', 'Google Maps'];
             rows.forEach(row => {
                 const cells = row.querySelectorAll('td');
-                if (cells.length >= 6) {
+                if (cells.length >= 7) {
+                    let gmaps = '';
+                    const link = cells[6].querySelector('a');
+                    if (link) {
+                        gmaps = link.href; // Full clickable URL
+                    }
                     tableData.push([
                         cells[0].textContent,
                         cells[1].textContent,
                         cells[2].textContent,
                         cells[3].textContent,
                         cells[4].textContent,
-                        cells[5].textContent
+                        cells[5].textContent,
+                        gmaps
                     ]);
                 }
             });
@@ -964,12 +969,14 @@
                 styles: { fontSize: 8 },
                 columnStyles: {
                     0: { cellWidth: 20 },
-                    1: { cellWidth: 30 },
-                    2: { cellWidth: 30 },
+                    1: { cellWidth: 28 },
+                    2: { cellWidth: 28 },
                     3: { cellWidth: 20 },
-                    4: { cellWidth: 30 },
-                    5: { cellWidth: 30 }
-                }
+                    4: { cellWidth: 28 },
+                    5: { cellWidth: 28 },
+                    6: { cellWidth: 128 }
+                },
+                margin: { left: 10, right: 10, top: 20, bottom: 20 }
             });
             
             let fileName = 'sweref99_to_wgs84_results.pdf';
@@ -1316,7 +1323,7 @@
 
         function saveToPdf() {
             const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
+            const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
             
             const rows = document.querySelectorAll('#resultsBody tr');
             if (!rows.length) {
@@ -1325,34 +1332,43 @@
             }
             
             const tableData = [];
-            const headers = ['PointID', 'Easting (GK)', 'Northing (GK)', 'Height', 'Latitude (WGS84)', 'Longitude (WGS84)'];
-            
+            const headers = ['PointID', 'Easting (GK)', 'Northing (GK)', 'Height', 'Latitude (WGS84)', 'Longitude (WGS84)', 'Google Maps'];
+
             rows.forEach(row => {
                 const cells = row.querySelectorAll('td');
-                if (cells.length >= 6) {
+                if (cells.length >= 7) {
+                    // Google Maps link is in the 7th cell (index 6), but as an <a> element
+                    let gmaps = '';
+                    const link = cells[6].querySelector('a');
+                    if (link) {
+                        gmaps = link.href; // Full clickable URL
+                    }
                     tableData.push([
                         cells[0].textContent,
                         cells[1].textContent,
                         cells[2].textContent,
                         cells[3].textContent,
                         cells[4].textContent,
-                        cells[5].textContent
+                        cells[5].textContent,
+                        gmaps
                     ]);
                 }
             });
-            
+
             doc.autoTable({
                 head: [headers],
                 body: tableData,
                 styles: { fontSize: 8 },
                 columnStyles: {
                     0: { cellWidth: 20 },
-                    1: { cellWidth: 30 },
-                    2: { cellWidth: 30 },
+                    1: { cellWidth: 28 },
+                    2: { cellWidth: 28 },
                     3: { cellWidth: 20 },
-                    4: { cellWidth: 30 },
-                    5: { cellWidth: 30 }
-                }
+                    4: { cellWidth: 28 },
+                    5: { cellWidth: 28 },
+                    6: { cellWidth: 128 }
+                },
+                margin: { left: 10, right: 10, top: 20, bottom: 20 }
             });
             
             let fileName = 'gk_to_wgs84_results.pdf';
@@ -1463,11 +1479,11 @@
                 body: tableData,
                 styles: { fontSize: 8 },
                 columnStyles: {
-                    0: { cellWidth: 25 },
-                    1: { cellWidth: 35 },
-                    2: { cellWidth: 35 },
-                    3: { cellWidth: 35 },
-                    4: { cellWidth: 35 }
+                    0: { cellWidth: 20 },
+                    1: { cellWidth: 30 },
+                    2: { cellWidth: 30 },
+                    3: { cellWidth: 20 },
+                    4: { cellWidth: 30 }
                 }
             });
             

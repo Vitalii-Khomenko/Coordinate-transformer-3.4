@@ -1,55 +1,46 @@
 # Universal Coordinate Converter
 
-Professional web-based tool for converting coordinates between different coordinate systems with map visualization and batch import/export capabilities.
+Web-based tool for converting coordinates between supported systems, with map visualization and TXT/PDF/KML import/export.
 
 ## Supported Coordinate Systems
 
 - **Gauß-Krüger (Bessel, Potsdam)** ↔ **WGS84** (Germany)
 - **SWEREF99 18 00 (EPSG:3011)** ↔ **WGS84** (Sweden)
-- **WGS84** → **Multiple Target Systems** (dropdown selection)
-- All systems support bidirectional transformations with high precision
+- **WGS84** → **Gauß-Krüger (GK)** or **SWEREF99 18 00** (dropdown)
+*Each direction is available as a separate function/tab.*
 
-## Key Features
+## Features
 
-### ✅ Offline Functions (work without internet):
-- **Coordinate mathematical calculations** - all transformations use built-in geodetic algorithms
-- **Multi-target WGS84 conversion** - dropdown selection between GK and SWEREF99 systems
-- **TXT file import/export** - batch data processing with system-specific file naming
-- **Dynamic table headers** - automatically adjust based on selected coordinate system
-- **Data validation** - comprehensive verification of input coordinate accuracy
-- **KML export** - Google Earth compatible format with clean point naming
+- All coordinate transformations are performed in-browser using built-in geodetic algorithms.
+- WGS84 can be converted to GK or SWEREF99 (dropdown selection).
+- TXT file import/export for batch processing.
+- KML export for Google Earth.
+- PDF export (tables and map).
+- Map visualization (OpenLayers, OpenStreetMap tiles; requires internet).
+- Google Maps links for each point.
+- Dynamic table headers and export filenames.
+- Input validation with user feedback.
+- Polyfills for legacy browser math functions.
 
-### 🌐 Internet-dependent Functions:
-- **Map visualization** - OpenStreetMap tiles with multi-source point display
-- **PDF export** - system-aware headers and file naming (jsPDF and html2canvas)
-- **Google Maps links** - quick navigation to coordinate points
-- **Map screenshots** - export interactive maps as PDF with quality control
+*Map and PDF export require internet for external libraries and map tiles.*
 
-### 📊 External Dependencies (CDN):
-- **jsPDF** (~500KB) - PDF document generation
-- **jsPDF AutoTable** (~150KB) - table formatting in PDFs
-- **OpenLayers** (~1.5MB) - interactive map library
-- **html2canvas** (~300KB) - map screenshot capture
+## Mathematical Details
 
-## Mathematical Accuracy
-
-- **GK (Bessel) ↔ WGS84**: Seven-parameter Helmert transformation with centimeter-level accuracy
-- **SWEREF99 18 00 ↔ WGS84**: Standard Transverse Mercator projection algorithms (GRS80 ellipsoid)
-- **Built-in polyfills** for legacy browser compatibility (Math.cosh, Math.sinh, Math.atanh, Math.asinh)
+- **GK (Bessel) ↔ WGS84**: Seven-parameter Helmert transformation
+- **SWEREF99 18 00 ↔ WGS84**: Standard Transverse Mercator projection (GRS80 ellipsoid)
+- Polyfills for legacy browser compatibility (Math.cosh, Math.sinh, Math.atanh, Math.asinh)
 
 ## Usage
 
-1. Open `universal-coordinate-converter.html` in your web browser (no installation required)
+1. Open `universal-coordinate-converter.html` in your browser (no installation needed).
 2. Select the desired tab:
-   - **Gauß-Krüger → WGS84:** Convert German coordinates to latitude/longitude
-   - **WGS84 → Target System:** Convert WGS84 coordinates with dropdown selection:
-     - Target: **Gauß-Krüger (GK)** - German coordinate system
-     - Target: **SWEREF99 18 00** - Swedish coordinate system
-   - **SWEREF99 18 00 → WGS84:** Convert Swedish coordinates to latitude/longitude
-   - **Map:** Visualize all converted points and export map as PDF/KML
-3. Enter data manually or import TXT file
-4. Select target coordinate system (when applicable)
-5. Click **Convert** and export results in multiple formats
+   - **Gauß-Krüger → WGS84**
+   - **WGS84 → GK or SWEREF99** (dropdown)
+   - **SWEREF99 18 00 → WGS84**
+   - **Map** (visualize/export points)
+3. Enter data manually or import TXT file.
+4. Select target system if needed.
+5. Click **Convert** and export results as TXT, PDF, or KML.
 
 ## Input Data Format
 
@@ -67,14 +58,14 @@ PointID Latitude Longitude
 1030 55.12345678 18.98765432
 ```
 
-*Note: Target coordinate system (GK or SWEREF99) is selected via dropdown menu.*
+*Target system (GK or SWEREF99) is selected via dropdown.*
 
 ## System Requirements
 
-- **Browser:** Chrome, Firefox, Edge, Safari (modern versions)
-- **JavaScript:** Must be enabled
-- **Internet:** Required only for maps and PDF export
-- **File size:** Up to 5MB for TXT import
+- Modern browser (Chrome, Firefox, Edge, Safari)
+- JavaScript enabled
+- Internet required for map and PDF export
+- TXT import up to 5MB
 
 ## Project Structure
 
@@ -84,19 +75,17 @@ PointID Latitude Longitude
 
 ## Performance
 
-- **Core calculations:** ~80% functionality works offline
-- **External dependencies:** ~2.5MB total size for optional features
-- **File processing:** Handles up to 5MB TXT files efficiently
-- **Browser compatibility:** Modern ES5+ JavaScript with polyfills
+- Most functions work offline (except map and PDF export)
+- Handles TXT files up to 5MB
+- Uses CDN libraries for map and PDF features
 
-## Technical Implementation
+## Technical Notes
 
-- **Enhanced UI:** Dropdown selection for target coordinate systems in WGS84 conversion tab
-- **Dynamic functionality:** Table headers and export filenames adjust based on selected system
-- **Datum transformations:** Seven-parameter Helmert transformation for GK ↔ WGS84
-- **Projection algorithms:** Standard Transverse Mercator formulas for SWEREF99
-- **Error handling:** Comprehensive validation with detailed user feedback
-- **Self-contained:** No installation or server requirements - runs entirely in browser
+- UI: Tabs for each conversion direction, dropdown for WGS84 target
+- Table headers and export filenames adjust to selected system
+- Standard geodetic formulas for all conversions
+- Input validation with user feedback
+- No installation or server required; runs in browser
 
 ## License
 
@@ -104,7 +93,7 @@ MIT License
 
 ## Contributing
 
-Feel free to submit issues and pull requests to improve the coordinate transformation accuracy or add new coordinate systems.
+Feel free to submit issues or pull requests to improve accuracy or add new systems.
 
 ---
 
